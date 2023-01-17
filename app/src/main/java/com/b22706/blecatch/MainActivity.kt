@@ -16,12 +16,18 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
 import com.b22706.blecatch.ui.theme.BLECatchTheme
@@ -111,13 +117,32 @@ class MainActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            var buttonText by remember {
+                mutableStateOf("BLE scan off")
+            }
+
             BLECatchTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colors.background
                 ) {
-                    Greeting("Android")
+                    Column {
+                        Greeting("Android")
+                        Button(onClick = {
+                            bleScan()
+                            buttonText = when(scannerBoolean){
+                                true->{
+                                    "BLE scan on"
+                                }
+                                false->{
+                                    "BLE scan off"
+                                }
+                            }
+                        }) {
+                            Text(text = buttonText)
+                        }
+                    }
                 }
             }
         }
@@ -163,37 +188,21 @@ class MainActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks {
         // ユーザーの許可が得られなかったときに呼び出される。
     }
 
-    override fun onResume() {
-        super.onResume()
-        //スキャンの開始
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.BLUETOOTH_SCAN
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            scanner.startScan(scanCallback)
-        }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        //スキャンを停止
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.BLUETOOTH_SCAN
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            scanner.stopScan(scanCallback)
-        }
-    }
-
     private fun bleScan(){
-        if(scannerBoolean){
-            //scanner.stopScan(scanCallback)
-            //setContent { ButtonText(name = "BLE scan Off") }
-        }else{
-            //scanner.startScan(scanCallback)
-            //setContent { ButtonText(name = "BLE scan On") }
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH_SCAN
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            scannerBoolean = if (scannerBoolean) {
+                //スキャンの開始
+                scanner.stopScan(scanCallback)
+                false
+            } else {
+                //スキャンを停止
+                scanner.startScan(scanCallback)
+                true
+            }
         }
     }
 }
@@ -207,6 +216,11 @@ fun Greeting(name: String) {
 @Composable
 fun DefaultPreview() {
     BLECatchTheme {
-        Greeting("Android")
+        Column(modifier = Modifier.background(Color.LightGray)) {
+            Greeting("Android")
+            Button(onClick = {}) {
+                Text(text = "BLE scan off")
+            }
+        }
     }
 }
