@@ -16,9 +16,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
@@ -30,7 +28,6 @@ import com.b22706.blecatch.ui.theme.BLECatchTheme
 import pub.devrel.easypermissions.EasyPermissions
 import java.util.*
 import kotlin.experimental.and
-
 
 class MainActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks {
     private lateinit var adapter: BluetoothAdapter
@@ -111,7 +108,6 @@ class MainActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks {
             return hex_2_str.uppercase(Locale.getDefault())
         }
     }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -194,10 +190,10 @@ class MainActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks {
     private fun bleScan(){
         if(scannerBoolean){
             //scanner.stopScan(scanCallback)
-            setContent { ButtonText(name = "BLE scan Off") }
+            //setContent { ButtonText(name = "BLE scan Off") }
         }else{
             //scanner.startScan(scanCallback)
-            setContent { ButtonText(name = "BLE scan On") }
+            //setContent { ButtonText(name = "BLE scan On") }
         }
     }
 }
@@ -207,19 +203,10 @@ fun Greeting(name: String) {
     Text(text = "Hello $name!")
 }
 
-
-@Composable
-fun ButtonText(name: String){
-    Text(text = name)
-}
-
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
-    Column{
+    BLECatchTheme {
         Greeting("Android")
-        Button(onClick = {}){
-            ButtonText(name = "BLE scan Off")
-        }
     }
 }
