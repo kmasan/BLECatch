@@ -31,15 +31,25 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
 import com.b22706.blecatch.ui.theme.BLECatchTheme
+import org.altbeacon.beacon.*
 import pub.devrel.easypermissions.EasyPermissions
 import java.util.*
 import kotlin.experimental.and
 
-class MainActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks {
+class MainActivity :
+    ComponentActivity(),
+    EasyPermissions.PermissionCallbacks,
+    RangeNotifier,
+    MonitorNotifier {
     private lateinit var adapter: BluetoothAdapter
     lateinit var scanner: BluetoothLeScanner
+    private lateinit var beaconManager: BeaconManager
+    private lateinit var mRegion: Region //検知対象の Beacon を識別するためのもの
 
     var scannerBoolean = false
+    companion object{
+        private const val IBEACON_FORMAT = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24"
+    }
 
     private val scanCallback = object: ScanCallback(){
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
@@ -68,30 +78,40 @@ class MainActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks {
 //                    result.getRssi()
 //                ) + "\n"
 //            )
+//            UUID（16バイト）・・・そのサービスを表すサービス番号 のイメージです
+//            Major（2バイト）・・・店舗を表す店番号のようなイメージです
+//            Minor（2バイト）・・・その店舗内の棚を表す棚番号のようなイメージです
+//            Measured Power（１バイト）・・・1m離れたところで受信されるRSSIの基準値です
         }
 
-        private fun getUUID(scanRecord: ByteArray): String {
-            return (IntToHex2(scanRecord[9] and 0xff.toByte())
-                    + IntToHex2(scanRecord[10] and 0xff.toByte())
-                    + IntToHex2(scanRecord[11] and 0xff.toByte())
-                    + IntToHex2(scanRecord[12] and 0xff.toByte())
-                    + "-"
-                    + IntToHex2(scanRecord[13] and 0xff.toByte())
-                    + IntToHex2(scanRecord[14] and 0xff.toByte())
-                    + "-"
-                    + IntToHex2(scanRecord[15] and 0xff.toByte())
-                    + IntToHex2(scanRecord[16] and 0xff.toByte())
-                    + "-"
-                    + IntToHex2(scanRecord[17] and 0xff.toByte())
-                    + IntToHex2(scanRecord[18] and 0xff.toByte())
-                    + "-"
-                    + IntToHex2(scanRecord[19] and 0xff.toByte())
-                    + IntToHex2(scanRecord[20] and 0xff.toByte())
-                    + IntToHex2(scanRecord[21] and 0xff.toByte())
-                    + IntToHex2(scanRecord[22] and 0xff.toByte())
-                    + IntToHex2(scanRecord[23] and 0xff.toByte())
-                    + IntToHex2(scanRecord[24] and 0xff.toByte()))
-        }
+        private fun getUUID(scanRecord: ByteArray) =
+            "${byteToHexString(scanRecord[9])}${byteToHexString(scanRecord[10])}${byteToHexString(scanRecord[11])}${byteToHexString(scanRecord[12])}"
+                .plus("-${byteToHexString(scanRecord[13])}${byteToHexString(scanRecord[14])}")
+                .plus("-${byteToHexString(scanRecord[15])}${byteToHexString(scanRecord[16])}")
+                .plus("-${byteToHexString(scanRecord[17])}${byteToHexString(scanRecord[18])}")
+                .plus("-${byteToHexString(scanRecord[19])}${byteToHexString(scanRecord[10])}${byteToHexString(scanRecord[10])}${byteToHexString(scanRecord[10])}${byteToHexString(scanRecord[10])}${byteToHexString(scanRecord[10])}")
+//                String {
+//            return (IntToHex2(scanRecord[9] and 0xff.toByte())
+//                    + IntToHex2(scanRecord[10] and 0xff.toByte())
+//                    + IntToHex2(scanRecord[11] and 0xff.toByte())
+//                    + IntToHex2(scanRecord[12] and 0xff.toByte())
+//                    + "-"
+//                    + IntToHex2(scanRecord[13] and 0xff.toByte())
+//                    + IntToHex2(scanRecord[14] and 0xff.toByte())
+//                    + "-"
+//                    + IntToHex2(scanRecord[15] and 0xff.toByte())
+//                    + IntToHex2(scanRecord[16] and 0xff.toByte())
+//                    + "-"
+//                    + IntToHex2(scanRecord[17] and 0xff.toByte())
+//                    + IntToHex2(scanRecord[18] and 0xff.toByte())
+//                    + "-"
+//                    + IntToHex2(scanRecord[19] and 0xff.toByte())
+//                    + IntToHex2(scanRecord[20] and 0xff.toByte())
+//                    + IntToHex2(scanRecord[21] and 0xff.toByte())
+//                    + IntToHex2(scanRecord[22] and 0xff.toByte())
+//                    + IntToHex2(scanRecord[23] and 0xff.toByte())
+//                    + IntToHex2(scanRecord[24] and 0xff.toByte()))
+//        }
 
         private fun getMajor(scanRecord: ByteArray): String {
             val hexMajor = IntToHex2(scanRecord[25] and 0xff.toByte()) +
@@ -113,6 +133,8 @@ class MainActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks {
             val hex_2_str = String(hex_2)
             return hex_2_str.uppercase(Locale.getDefault())
         }
+
+        fun byteToHexString(byte: Byte) = "%02X".format(byte)
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -159,7 +181,8 @@ class MainActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks {
                 Manifest.permission.BLUETOOTH_SCAN,
                 Manifest.permission.BLUETOOTH_ADVERTISE,
                 Manifest.permission.BLUETOOTH_CONNECT,
-                Manifest.permission.ACCESS_FINE_LOCATION
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
             )
             else -> arrayOf(
                 Manifest.permission.BLUETOOTH,
@@ -177,6 +200,11 @@ class MainActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks {
         val manager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         adapter = manager.adapter
         scanner = adapter.bluetoothLeScanner
+
+        // Region("iBeacon", Identifier.parse("監視対象のUUID"), Major, Minor)
+        mRegion = Region("iBeacon", null, null, null)
+        beaconManager = BeaconManager.getInstanceForApplication(this)
+        beaconManager.beaconParsers.add(BeaconParser().setBeaconLayout(IBEACON_FORMAT)) // iBeaconのフォーマット指定
     }
 
     override fun onPermissionsGranted(requestCode: Int, list: List<String>) {
@@ -195,15 +223,48 @@ class MainActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks {
             ) == PackageManager.PERMISSION_GRANTED
         ) {
             scannerBoolean = if (scannerBoolean) {
-                //スキャンの開始
-                scanner.stopScan(scanCallback)
+                //スキャンを停止
+                //scanner.stopScan(scanCallback)
+
+                beaconManager.stopMonitoring(mRegion)
+                beaconManager.stopRangingBeacons(mRegion)
                 false
             } else {
-                //スキャンを停止
-                scanner.startScan(scanCallback)
+                //スキャンの開始
+                //scanner.startScan(scanCallback)
+
+                beaconManager.addMonitorNotifier(this)
+                beaconManager.addRangeNotifier(this)
+                beaconManager.startMonitoring(mRegion)
+                beaconManager.startRangingBeacons(mRegion)
                 true
             }
         }
+    }
+
+    override fun didRangeBeaconsInRegion(beacons: MutableCollection<Beacon>?, region: Region?) {
+        //検知したBeaconの情報
+        Log.d("MainActivity", "beacons.size ${beacons?.size}")
+        beacons?.let {
+            for (beacon in beacons) {
+                Log.d("MainActivity", "UUID: ${beacon.id1}, major: ${beacon.id2}, minor: ${beacon.id3}, RSSI: ${beacon.rssi}, TxPower: ${beacon.txPower}, Distance: ${beacon.distance}")
+            }
+        }
+    }
+
+    override fun didEnterRegion(region: Region?) {
+        //領域への入場を検知
+        Log.d("iBeacon", "Enter Region ${region?.uniqueId}")
+    }
+
+    override fun didExitRegion(region: Region?) {
+        //領域からの退場を検知
+        Log.d("iBeacon", "Exit Region ${region?.uniqueId}")
+    }
+
+    override fun didDetermineStateForRegion(state: Int, region: Region?) {
+        //領域への入退場のステータス変化を検知（INSIDE: 1, OUTSIDE: 0）
+        Log.d("MainActivity", "Determine State: $state")
     }
 }
 
