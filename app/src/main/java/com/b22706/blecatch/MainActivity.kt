@@ -1,14 +1,6 @@
 package com.b22706.blecatch
 
 import android.Manifest
-import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothManager
-import android.bluetooth.le.BluetoothLeScanner
-import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanRecord
-import android.bluetooth.le.ScanResult
-import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -16,8 +8,8 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.Button
@@ -25,149 +17,31 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
 import com.b22706.blecatch.ui.theme.BLECatchTheme
 import org.altbeacon.beacon.*
 import pub.devrel.easypermissions.EasyPermissions
-import java.util.*
-import kotlin.experimental.and
 
 class MainActivity :
     ComponentActivity(),
     EasyPermissions.PermissionCallbacks,
     RangeNotifier,
-    MonitorNotifier {
-    private lateinit var adapter: BluetoothAdapter
-    lateinit var scanner: BluetoothLeScanner
+    MonitorNotifier{
+    // https://qiita.com/kenmaeda51415/items/ac5a2d5a15783bbe9192
+    companion object{
+        private const val IBEACON_FORMAT = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24"
+    }
     private lateinit var beaconManager: BeaconManager
     private lateinit var mRegion: Region //検知対象の Beacon を識別するためのもの
 
     var scannerBoolean = false
-    companion object{
-        private const val IBEACON_FORMAT = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24"
-    }
 
-    private val scanCallback = object: ScanCallback(){
-        override fun onScanResult(callbackType: Int, result: ScanResult?) {
-            super.onScanResult(callbackType, result)
-            // スキャン結果が返ってきます
-            // このメソッドかonBatchScanResultsのいずれかが呼び出されます。
-            // 通常はこちらが呼び出されます。
-            if (result == null) {
-                return
-            }
-            val bDevice: BluetoothDevice = result.device
-            val record: ScanRecord? = result.scanRecord
-            val bytes = if (record != null) record.bytes else ByteArray(0)
-            Log.d("Beacon", "${bDevice.address}, $bytes")
-//            Log.d("Beacon", "address:${bDevice.address}"
-//                .plus(", UUID:${getUUID(bytes)}")
-//                .plus(", Major:${getMajor(bytes)}")
-//                .plus(", Minor:${getMinor(bytes)}")
-//                .plus(", Power:${bytes[29]}")
-//                .plus(", RSSI:${result.rssi}"))
-//            textView.append(
-//                "UUID: " + getUUID(bytes) + " major: " + getMajor(bytes) + " minor: " + getMinor(
-//                    bytes
-//                ) +
-//                        " Power: " + bytes[29].toString() + " Rssi: " + java.lang.String.valueOf(
-//                    result.getRssi()
-//                ) + "\n"
-//            )
-//            UUID（16バイト）・・・そのサービスを表すサービス番号 のイメージです
-//            Major（2バイト）・・・店舗を表す店番号のようなイメージです
-//            Minor（2バイト）・・・その店舗内の棚を表す棚番号のようなイメージです
-//            Measured Power（１バイト）・・・1m離れたところで受信されるRSSIの基準値です
-        }
-
-        private fun getUUID(scanRecord: ByteArray) =
-            "${byteToHexString(scanRecord[9])}${byteToHexString(scanRecord[10])}${byteToHexString(scanRecord[11])}${byteToHexString(scanRecord[12])}"
-                .plus("-${byteToHexString(scanRecord[13])}${byteToHexString(scanRecord[14])}")
-                .plus("-${byteToHexString(scanRecord[15])}${byteToHexString(scanRecord[16])}")
-                .plus("-${byteToHexString(scanRecord[17])}${byteToHexString(scanRecord[18])}")
-                .plus("-${byteToHexString(scanRecord[19])}${byteToHexString(scanRecord[10])}${byteToHexString(scanRecord[10])}${byteToHexString(scanRecord[10])}${byteToHexString(scanRecord[10])}${byteToHexString(scanRecord[10])}")
-//                String {
-//            return (IntToHex2(scanRecord[9] and 0xff.toByte())
-//                    + IntToHex2(scanRecord[10] and 0xff.toByte())
-//                    + IntToHex2(scanRecord[11] and 0xff.toByte())
-//                    + IntToHex2(scanRecord[12] and 0xff.toByte())
-//                    + "-"
-//                    + IntToHex2(scanRecord[13] and 0xff.toByte())
-//                    + IntToHex2(scanRecord[14] and 0xff.toByte())
-//                    + "-"
-//                    + IntToHex2(scanRecord[15] and 0xff.toByte())
-//                    + IntToHex2(scanRecord[16] and 0xff.toByte())
-//                    + "-"
-//                    + IntToHex2(scanRecord[17] and 0xff.toByte())
-//                    + IntToHex2(scanRecord[18] and 0xff.toByte())
-//                    + "-"
-//                    + IntToHex2(scanRecord[19] and 0xff.toByte())
-//                    + IntToHex2(scanRecord[20] and 0xff.toByte())
-//                    + IntToHex2(scanRecord[21] and 0xff.toByte())
-//                    + IntToHex2(scanRecord[22] and 0xff.toByte())
-//                    + IntToHex2(scanRecord[23] and 0xff.toByte())
-//                    + IntToHex2(scanRecord[24] and 0xff.toByte()))
-//        }
-
-        private fun getMajor(scanRecord: ByteArray): String {
-            val hexMajor = IntToHex2(scanRecord[25] and 0xff.toByte()) +
-                    IntToHex2(scanRecord[26] and 0xff.toByte())
-            return hexMajor.toInt(16).toString()
-        }
-
-        private fun getMinor(scanRecord: ByteArray): String {
-            val hexMinor = IntToHex2(scanRecord[27] and 0xff.toByte()) +
-                    IntToHex2(scanRecord[28] and 0xff.toByte())
-            return hexMinor.toInt(16).toString()
-        }
-
-        private fun IntToHex2(i: Byte): String {
-            val hex_2 = charArrayOf(
-//                Character.forDigit((i shl 4) and 0x0f, 16),
-//                Character.forDigit(i and 0x0f, 16)
-            )
-            val hex_2_str = String(hex_2)
-            return hex_2_str.uppercase(Locale.getDefault())
-        }
-
-        fun byteToHexString(byte: Byte) = "%02X".format(byte)
-    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            var buttonText by remember {
-                mutableStateOf("BLE scan off")
-            }
-
-            BLECatchTheme {
-                // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colors.background
-                ) {
-                    Column {
-                        Greeting("Android")
-                        Button(onClick = {
-                            bleScan()
-                            buttonText = when(scannerBoolean){
-                                true->{
-                                    "BLE scan on"
-                                }
-                                false->{
-                                    "BLE scan off"
-                                }
-                            }
-                        }) {
-                            Text(text = buttonText)
-                        }
-                    }
-                }
-            }
-        }
+        createSetContent()
 
         //BLE対応端末かどうかを調べる。対応していない場合はメッセージを出して終了
         if (!packageManager.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
@@ -197,10 +71,6 @@ class MainActivity :
         }
 
         //Bluetoothアダプターを初期化する
-        val manager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        adapter = manager.adapter
-        scanner = adapter.bluetoothLeScanner
-
         // Region("iBeacon", Identifier.parse("監視対象のUUID"), Major, Minor)
         mRegion = Region("iBeacon", null, null, null)
         beaconManager = BeaconManager.getInstanceForApplication(this)
@@ -224,15 +94,11 @@ class MainActivity :
         ) {
             scannerBoolean = if (scannerBoolean) {
                 //スキャンを停止
-                //scanner.stopScan(scanCallback)
-
                 beaconManager.stopMonitoring(mRegion)
                 beaconManager.stopRangingBeacons(mRegion)
                 false
             } else {
                 //スキャンの開始
-                //scanner.startScan(scanCallback)
-
                 beaconManager.addMonitorNotifier(this)
                 beaconManager.addRangeNotifier(this)
                 beaconManager.startMonitoring(mRegion)
@@ -244,10 +110,10 @@ class MainActivity :
 
     override fun didRangeBeaconsInRegion(beacons: MutableCollection<Beacon>?, region: Region?) {
         //検知したBeaconの情報
-        Log.d("MainActivity", "beacons.size ${beacons?.size}")
+        Log.d("iBeacon", "beacons.size ${beacons?.size}")
         beacons?.let {
             for (beacon in beacons) {
-                Log.d("MainActivity", "UUID: ${beacon.id1}, major: ${beacon.id2}, minor: ${beacon.id3}, RSSI: ${beacon.rssi}, TxPower: ${beacon.txPower}, Distance: ${beacon.distance}")
+                Log.d("iBeacon", "UUID: ${beacon.id1}, major: ${beacon.id2}, minor: ${beacon.id3}, RSSI: ${beacon.rssi}, TxPower: ${beacon.txPower}, Distance: ${beacon.distance}")
             }
         }
     }
@@ -264,7 +130,41 @@ class MainActivity :
 
     override fun didDetermineStateForRegion(state: Int, region: Region?) {
         //領域への入退場のステータス変化を検知（INSIDE: 1, OUTSIDE: 0）
-        Log.d("MainActivity", "Determine State: $state")
+        Log.d("iBeacon", "Determine State: $state")
+    }
+
+    private fun createSetContent(){
+        setContent {
+            var buttonText by remember { mutableStateOf("BLE scan off") }
+
+            BLECatchTheme {
+                // A surface container using the 'background' color from the theme
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colors.background
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ){
+                        Greeting("Android")
+                        Button(onClick = {
+                            bleScan()
+                            buttonText = when(scannerBoolean){
+                                true->{
+                                    "BLE scan on"
+                                }
+                                false->{
+                                    "BLE scan off"
+                                }
+                            }
+                        }) {
+                            Text(text = buttonText)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -277,7 +177,7 @@ fun Greeting(name: String) {
 @Composable
 fun DefaultPreview() {
     BLECatchTheme {
-        Column(modifier = Modifier.background(Color.LightGray)) {
+        Column(modifier = Modifier.background(MaterialTheme.colors.background)) {
             Greeting("Android")
             Button(onClick = {}) {
                 Text(text = "BLE scan off")
