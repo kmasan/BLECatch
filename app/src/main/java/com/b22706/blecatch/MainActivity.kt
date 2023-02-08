@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -11,7 +12,9 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
@@ -21,23 +24,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import com.b22706.blecatch.ui.theme.BLECatchTheme
 import org.altbeacon.beacon.*
 import pub.devrel.easypermissions.EasyPermissions
 
 class MainActivity :
     ComponentActivity(),
-    EasyPermissions.PermissionCallbacks,
-    RangeNotifier,
-    MonitorNotifier{
+    EasyPermissions.PermissionCallbacks
+{
     // https://qiita.com/kenmaeda51415/items/ac5a2d5a15783bbe9192
     companion object{
         private const val IBEACON_FORMAT = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24"
     }
-    private lateinit var beaconManager: BeaconManager
-    private lateinit var mRegion: Region //検知対象の Beacon を識別するためのもの
+    private lateinit var iBeacon: IBeacon
 
-    var scannerBoolean = false
+    var externalFilePath = ""
+    var csvBoolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,11 +74,10 @@ class MainActivity :
             return
         }
 
-        //Bluetoothアダプターを初期化する
-        // Region("iBeacon", Identifier.parse("監視対象のUUID"), Major, Minor)
-        mRegion = Region("iBeacon", null, null, null)
-        beaconManager = BeaconManager.getInstanceForApplication(this)
-        beaconManager.beaconParsers.add(BeaconParser().setBeaconLayout(IBEACON_FORMAT)) // iBeaconのフォーマット指定
+        externalFilePath = this.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS).toString()
+
+        iBeacon = IBeacon(this)
+        iBeacon.setRegion(null, "11", "")
     }
 
     override fun onPermissionsGranted(requestCode: Int, list: List<String>) {
@@ -84,58 +87,14 @@ class MainActivity :
 
     override fun onPermissionsDenied(requestCode: Int, list: List<String>) {
         // ユーザーの許可が得られなかったときに呼び出される。
-    }
-
-    private fun bleScan(){
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.BLUETOOTH_SCAN
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            scannerBoolean = if (scannerBoolean) {
-                //スキャンを停止
-                beaconManager.stopMonitoring(mRegion)
-                beaconManager.stopRangingBeacons(mRegion)
-                false
-            } else {
-                //スキャンの開始
-                beaconManager.addMonitorNotifier(this)
-                beaconManager.addRangeNotifier(this)
-                beaconManager.startMonitoring(mRegion)
-                beaconManager.startRangingBeacons(mRegion)
-                true
-            }
-        }
-    }
-
-    override fun didRangeBeaconsInRegion(beacons: MutableCollection<Beacon>?, region: Region?) {
-        //検知したBeaconの情報
-        Log.d("iBeacon", "beacons.size ${beacons?.size}")
-        beacons?.let {
-            for (beacon in beacons) {
-                Log.d("iBeacon", "UUID: ${beacon.id1}, major: ${beacon.id2}, minor: ${beacon.id3}, RSSI: ${beacon.rssi}, TxPower: ${beacon.txPower}, Distance: ${beacon.distance}")
-            }
-        }
-    }
-
-    override fun didEnterRegion(region: Region?) {
-        //領域への入場を検知
-        Log.d("iBeacon", "Enter Region ${region?.uniqueId}")
-    }
-
-    override fun didExitRegion(region: Region?) {
-        //領域からの退場を検知
-        Log.d("iBeacon", "Exit Region ${region?.uniqueId}")
-    }
-
-    override fun didDetermineStateForRegion(state: Int, region: Region?) {
-        //領域への入退場のステータス変化を検知（INSIDE: 1, OUTSIDE: 0）
-        Log.d("iBeacon", "Determine State: $state")
+        finish()
     }
 
     private fun createSetContent(){
         setContent {
             var buttonText by remember { mutableStateOf("BLE scan off") }
+            var csvButtonText by remember { mutableStateOf("csv start") }
+            var beaconList by remember { mutableStateOf( mutableListOf<Beacon>()) }
 
             BLECatchTheme {
                 // A surface container using the 'background' color from the theme
@@ -148,19 +107,61 @@ class MainActivity :
                         horizontalAlignment = Alignment.CenterHorizontally
                     ){
                         Greeting("Android")
-                        Button(onClick = {
-                            bleScan()
-                            buttonText = when(scannerBoolean){
+                        OnClickButton(text = buttonText) {
+                            buttonText = when(iBeacon.scannerBoolean){
                                 true->{
-                                    "BLE scan on"
+                                    iBeacon.stopScan()
+                                    "BLE scan off"
                                 }
                                 false->{
-                                    "BLE scan off"
+                                    iBeacon.startScan()
+                                    "BLE scan on"
+                                }
+                            }
+                        }
+                        Button(onClick = {
+                            csvButtonText = when(csvBoolean){
+                                true->{
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        "wait...",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                    iBeacon.csvWriter(externalFilePath,"test").let {
+                                        when(it){
+                                            true ->{
+                                                Toast.makeText(
+                                                    this@MainActivity,
+                                                    "csv success",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            }
+                                            false -> {
+                                                Toast.makeText(
+                                                    this@MainActivity,
+                                                    "csv defeat",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                                Log.d("csvWrite","defeat")
+                                            }
+                                        }
+                                    }
+                                    "csv start"
+                                }
+                                false->{
+                                    iBeacon.resetQueue()
+                                    "csw write"
                                 }
                             }
                         }) {
-                            Text(text = buttonText)
+                            Text(text = csvButtonText)
                         }
+                        OnClickButton(text = "list update") {
+                            beaconList = mutableListOf()
+                            beaconList = iBeacon.beaconList
+                            Log.d("Main", beaconList.toString())
+                        }
+                        BeaconList(beaconList)
                     }
                 }
             }
@@ -171,6 +172,28 @@ class MainActivity :
 @Composable
 fun Greeting(name: String) {
     Text(text = "Hello $name!")
+}
+
+@Composable
+fun BeaconList(messages: List<Beacon>) {
+    LazyColumn(reverseLayout = true) {
+        messages.forEach { 
+            item { BeaconListRow(it) }
+        }
+    }
+}
+
+@Composable
+fun BeaconListRow(beacon: Beacon) {
+    Text(text = "UUID: ${beacon.id1}, major: ${beacon.id2}, minor: ${beacon.id3}, RSSI: ${beacon.rssi}, TxPower: ${beacon.txPower}, Distance: ${beacon.distance}")
+}
+
+@Composable
+fun OnClickButton(text: String, onClick: () -> Unit){
+    Button(onClick = onClick
+    ) {
+        Text(text = text)
+    }
 }
 
 @Preview(showBackground = true)

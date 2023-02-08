@@ -6,8 +6,16 @@
         <entry key="../../../../layout/compose-model-1673966781682.xml" value="0.1527777777777778" />
         <entry key="../../../../layout/compose-model-1673968144680.xml" value="1.0" />
         <entry key="../../../../layout/compose-model-1674092305228.xml" value="0.48104956268221577" />
+        <entry key="../../../../layout/compose-model-1674971093793.xml" value="0.3556851311953353" />
+        <entry key="../../../../layout/compose-model-1675748041761.xml" value="1.0" />
+        <entry key="../../../../layout/compose-model-1675756672078.xml" value="0.282798833819242" />
       </map>
     </option>
+  </component>
+  <component name="EntryPointsManager">
+    <list size="1">
+      <item index="0" class="java.lang.String" itemvalue="androidx.compose.runtime.Composable" />
+    </list>
   </component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_11" project-jdk-name="1.8" project-jdk-type="JavaSDK">
     <output url="file://$PROJECT_DIR$/build/classes" />

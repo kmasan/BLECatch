@@ -60,4 +60,6 @@ dependencies {
     debugImplementation "androidx.compose.ui:ui-tooling:$compose_version"
     implementation 'pub.devrel:easypermissions:3.0.0'
     implementation 'org.altbeacon:android-beacon-library:2.19.4'
+    implementation 'org.apache.commons:commons-csv:1.8'
+    implementation "androidx.constraintlayout:constraintlayout-compose:1.0.0-alpha08"
 }
