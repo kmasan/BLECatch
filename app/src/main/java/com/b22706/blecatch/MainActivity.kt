@@ -20,6 +20,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -94,7 +95,7 @@ class MainActivity :
         setContent {
             var buttonText by remember { mutableStateOf("BLE scan off") }
             var csvButtonText by remember { mutableStateOf("csv start") }
-            var beaconList by remember { mutableStateOf( mutableListOf<Beacon>()) }
+            val beaconList by iBeacon.beaconLiveData.observeAsState()
 
             BLECatchTheme {
                 // A surface container using the 'background' color from the theme
@@ -157,8 +158,8 @@ class MainActivity :
                             Text(text = csvButtonText)
                         }
                         OnClickButton(text = "list update") {
-                            beaconList = mutableListOf()
-                            beaconList = iBeacon.beaconList
+//                            beaconList = mutableListOf()
+//                            beaconList = iBeacon.beaconList
                             Log.d("Main", beaconList.toString())
                         }
                         BeaconList(beaconList)
@@ -175,9 +176,9 @@ fun Greeting(name: String) {
 }
 
 @Composable
-fun BeaconList(messages: List<Beacon>) {
+fun BeaconList(messages: List<Beacon>?) {
     LazyColumn(reverseLayout = true) {
-        messages.forEach { 
+        messages?.forEach {
             item { BeaconListRow(it) }
         }
     }

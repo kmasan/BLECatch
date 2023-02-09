@@ -32,17 +32,21 @@ class IBeacon(private val context: Context): RangeNotifier, MonitorNotifier {
     )
 
     val beaconList: MutableList<Beacon> = mutableListOf()
+    private var _beaconLiveData = MutableLiveData(beaconList.toList())
+    val beaconLiveData: LiveData<List<Beacon>> = _beaconLiveData
     private fun beaconListAdd(data: Beacon){
         for (i in 0 until beaconList.size){
             if(beaconList.size == 0)break
             val beacon = beaconList[i]
             if(beacon.id1 == data.id1 && beacon.id2 == data.id2 && beacon.id3 == data.id3){
                 beaconList[i] = data
+                _beaconLiveData.postValue(beaconList.toList())
                 return
             }
         }
 
         beaconList.add(data)
+        _beaconLiveData.postValue(beaconList.toList())
     }
 
     private val beaconManager: BeaconManager = BeaconManager.getInstanceForApplication(context)

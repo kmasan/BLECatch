@@ -58,6 +58,7 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     androidTestImplementation "androidx.compose.ui:ui-test-junit4:$compose_version"
     debugImplementation "androidx.compose.ui:ui-tooling:$compose_version"
+    implementation "androidx.compose.runtime:runtime-livedata:$compose_version"
     implementation 'pub.devrel:easypermissions:3.0.0'
     implementation 'org.altbeacon:android-beacon-library:2.19.4'
     implementation 'org.apache.commons:commons-csv:1.8'
