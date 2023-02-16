@@ -12,21 +12,14 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.Button
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.core.app.ActivityCompat
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import com.b22706.blecatch.ui.theme.BLECatchTheme
 import org.altbeacon.beacon.*
 import pub.devrel.easypermissions.EasyPermissions
@@ -96,6 +89,7 @@ class MainActivity :
             var buttonText by remember { mutableStateOf("BLE scan off") }
             var csvButtonText by remember { mutableStateOf("csv start") }
             val beaconList by iBeacon.beaconLiveData.observeAsState()
+            var majorText by remember { mutableStateOf("") }
 
             BLECatchTheme {
                 // A surface container using the 'background' color from the theme
@@ -128,7 +122,7 @@ class MainActivity :
                                         "wait...",
                                         Toast.LENGTH_LONG
                                     ).show()
-                                    iBeacon.csvWriter(externalFilePath,"test").let {
+                                    iBeacon.csvWriter(externalFilePath,System.currentTimeMillis().toString()).let {
                                         when(it){
                                             true ->{
                                                 Toast.makeText(
@@ -147,20 +141,31 @@ class MainActivity :
                                             }
                                         }
                                     }
+                                    csvBoolean = false
                                     "csv start"
                                 }
                                 false->{
                                     iBeacon.resetQueue()
+                                    csvBoolean = true
                                     "csw write"
                                 }
                             }
                         }) {
                             Text(text = csvButtonText)
                         }
-                        OnClickButton(text = "list update") {
-//                            beaconList = mutableListOf()
-//                            beaconList = iBeacon.beaconList
-                            Log.d("Main", beaconList.toString())
+                        TextField(
+                            value = majorText,
+                            onValueChange = { majorText = it },
+                            label = { Text("major") }
+                        )
+                        OnClickButton(text = "change major"){
+                            Log.d("MainActivity", majorText)
+                            Toast.makeText(
+                                this@MainActivity,
+                                "major change: $majorText",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            iBeacon.setRegion(null, majorText, null)
                         }
                         BeaconList(beaconList)
                     }
@@ -195,6 +200,18 @@ fun OnClickButton(text: String, onClick: () -> Unit){
     ) {
         Text(text = text)
     }
+}
+
+@Composable
+fun RegionChange(bText: String, onClick: () -> Unit){
+    var text by remember { mutableStateOf("") }
+
+    TextField(
+        value = text,
+        onValueChange = { text = it },
+        label = { Text("major") }
+    )
+    OnClickButton(text = bText, onClick = onClick)
 }
 
 @Preview(showBackground = true)

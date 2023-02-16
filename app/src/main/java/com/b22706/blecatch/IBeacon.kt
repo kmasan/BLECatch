@@ -24,22 +24,19 @@ class IBeacon(private val context: Context): RangeNotifier, MonitorNotifier {
     fun resetQueue(){queue = LinkedList()}
     data class IBeaconData (
         val time: Long,
-        val uuid: String,
-        val major: String,
-        val minor: String,
-        val rssi: Int,
-        val distance: Double
+        val iBeacon: Beacon
     )
 
     val beaconList: MutableList<Beacon> = mutableListOf()
-    private var _beaconLiveData = MutableLiveData(beaconList.toList())
+    private var _beaconLiveData = MutableLiveData(listOf<Beacon>())
     val beaconLiveData: LiveData<List<Beacon>> = _beaconLiveData
     private fun beaconListAdd(data: Beacon){
         for (i in 0 until beaconList.size){
             if(beaconList.size == 0)break
             val beacon = beaconList[i]
             if(beacon.id1 == data.id1 && beacon.id2 == data.id2 && beacon.id3 == data.id3){
-                beaconList[i] = data
+                beaconList.removeAt(i)
+                beaconList.add(i,data)
                 _beaconLiveData.postValue(beaconList.toList())
                 return
             }
@@ -123,7 +120,7 @@ class IBeacon(private val context: Context): RangeNotifier, MonitorNotifier {
             for (beacon in beacons) {
                 Log.d(LOG_NAME, "UUID: ${beacon.id1}, major: ${beacon.id2}, minor: ${beacon.id3}, RSSI: ${beacon.rssi}, TxPower: ${beacon.txPower}, Distance: ${beacon.distance}")
                 beaconListAdd(beacon)
-                queue.add(IBeaconData(System.currentTimeMillis(),beacon.id1.toString(),beacon.id2.toString(),beacon.id1.toString(),beacon.rssi,beacon.distance))
+                queue.add(IBeaconData(System.currentTimeMillis(), beacon))
             }
         }
     }
@@ -166,11 +163,11 @@ class IBeacon(private val context: Context): RangeNotifier, MonitorNotifier {
                 //データ保存
                 csvPrinter.printRecord(
                     data.time.toString(),
-                    data.uuid,
-                    data.major,
-                    data.minor,
-                    data.rssi.toString(),
-                    data.distance.toString()
+                    data.iBeacon.id1,
+                    data.iBeacon.id2,
+                    data.iBeacon.id3,
+                    data.iBeacon.rssi.toString(),
+                    data.iBeacon.distance.toString()
                 )
             }
             //データ保存の終了処理
