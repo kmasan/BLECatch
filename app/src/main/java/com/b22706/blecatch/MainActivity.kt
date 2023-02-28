@@ -117,17 +117,22 @@ class MainActivity :
                         Button(onClick = {
                             csvButtonText = when(csvBoolean){
                                 true->{
+                                    iBeacon.csvRun = false
+                                    csvBoolean = false
                                     Toast.makeText(
                                         this@MainActivity,
-                                        "wait...",
+                                        "csv stop",
                                         Toast.LENGTH_LONG
                                     ).show()
+                                    "csv start"
+                                }
+                                false->{
                                     iBeacon.csvWriter(externalFilePath,System.currentTimeMillis().toString()).let {
                                         when(it){
                                             true ->{
                                                 Toast.makeText(
                                                     this@MainActivity,
-                                                    "csv success",
+                                                    "csv writing",
                                                     Toast.LENGTH_LONG
                                                 ).show()
                                             }
@@ -141,11 +146,6 @@ class MainActivity :
                                             }
                                         }
                                     }
-                                    csvBoolean = false
-                                    "csv start"
-                                }
-                                false->{
-                                    iBeacon.resetQueue()
                                     csvBoolean = true
                                     "csw write"
                                 }

@@ -3,6 +3,8 @@ package com.b22706.blecatch
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.LiveData
@@ -20,12 +22,13 @@ class IBeacon(private val context: Context): RangeNotifier, MonitorNotifier {
         private const val IBEACON_FORMAT = "m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24"
     }
 
-    private var queue: LinkedList<IBeaconData> = LinkedList()
-    fun resetQueue(){queue = LinkedList()}
+    private var queue: ArrayDeque<IBeaconData> = ArrayDeque(listOf())
+    fun resetQueue(){queue.clear()}
     data class IBeaconData (
         val time: Long,
         val iBeacon: Beacon
     )
+    var csvRun = false
 
     val beaconList: MutableList<Beacon> = mutableListOf()
     private var _beaconLiveData = MutableLiveData(listOf<Beacon>())
@@ -158,21 +161,43 @@ class IBeacon(private val context: Context): RangeNotifier, MonitorNotifier {
                         "distance"
                     )
             )
-            //書き込み開始
-            for(data in queue){
-                //データ保存
-                csvPrinter.printRecord(
-                    data.time.toString(),
-                    data.iBeacon.id1,
-                    data.iBeacon.id2,
-                    data.iBeacon.id3,
-                    data.iBeacon.rssi.toString(),
-                    data.iBeacon.distance.toString()
-                )
+            val hnd = Handler(Looper.getMainLooper())
+            queue.clear()
+            csvRun = true
+            // こいつ(rnb0) が何回も呼ばれる
+            val rnb = object : Runnable {
+                override fun run() {
+                    val dequeClone = queue.clone()
+                    //書き込み開始
+                    for(data in dequeClone){
+                        //データ保存
+                        csvPrinter.printRecord(
+                            data.time.toString(),
+                            data.iBeacon.id1,
+                            data.iBeacon.id2,
+                            data.iBeacon.id3,
+                            data.iBeacon.rssi.toString(),
+                            data.iBeacon.distance.toString()
+                        )
+                    }
+                    queue.clear()
+
+                    // stop用のフラグ
+                    when(csvRun) {
+                        true -> {
+                            // 指定時間後に自分自身を呼ぶ
+                            hnd.postDelayed(this, 1000)
+                        }
+                        false -> {
+                            //データ保存の終了処理
+                            csvPrinter.flush()
+                            csvPrinter.close()
+                        }
+                    }
+                }
             }
-            //データ保存の終了処理
-            csvPrinter.flush()
-            csvPrinter.close()
+            // 初回の呼び出し
+            hnd.post(rnb)
             return true
         }catch (e: IOException){
             //エラー処理
