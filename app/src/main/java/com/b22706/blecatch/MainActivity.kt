@@ -2,6 +2,8 @@ package com.b22706.blecatch
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.icu.text.DateFormat
+import android.icu.text.SimpleDateFormat
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
@@ -23,6 +25,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.b22706.blecatch.ui.theme.BLECatchTheme
 import org.altbeacon.beacon.*
 import pub.devrel.easypermissions.EasyPermissions
+import java.util.*
 
 class MainActivity :
     ComponentActivity(),
@@ -84,12 +87,20 @@ class MainActivity :
         finish()
     }
 
+    private fun cnvDate(date: Date): String {
+        //取得する日時のフォーマットを指定
+        val df: DateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ss", Locale.JAPAN)
+
+        //日時を指定したフォーマットで取得
+        return df.format(date)
+    }
+
     private fun createSetContent(){
         setContent {
             var buttonText by remember { mutableStateOf("BLE scan off") }
             var csvButtonText by remember { mutableStateOf("csv start") }
             val beaconList by iBeacon.beaconLiveData.observeAsState()
-            var majorText by remember { mutableStateOf("") }
+            var majorText by remember { mutableStateOf("11") }
 
             BLECatchTheme {
                 // A surface container using the 'background' color from the theme
@@ -127,7 +138,7 @@ class MainActivity :
                                     "csv start"
                                 }
                                 false->{
-                                    iBeacon.csvWriter(externalFilePath,System.currentTimeMillis().toString()).let {
+                                    iBeacon.csvWriter(externalFilePath,cnvDate(Date(System.currentTimeMillis()))).let {
                                         when(it){
                                             true ->{
                                                 Toast.makeText(
